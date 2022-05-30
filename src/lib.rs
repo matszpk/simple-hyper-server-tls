@@ -184,12 +184,12 @@ fn ssl_context_set_alpns(builder: &mut SslContextBuilder, protocols: Protocols)
         Protocols::ALL => &b"\x08http/1.1"[..],
         
         #[cfg(all(not(feature = "hyper-h1"), feature = "hyper-h2"))]
-        Protocols::ALL => &b"\x02"[..],
+        Protocols::ALL => &b"\x02h2"[..],
         
         #[cfg(feature = "hyper-h1")]
         Protocols::HTTP1 => &b"\x08http/1.1"[..],
         #[cfg(feature = "hyper-h2")]
-        Protocols::HTTP2 => &b"\x02"[..],
+        Protocols::HTTP2 => &b"\x02h2"[..],
     };
     builder.set_alpn_protos(protos)?;
     builder.set_alpn_select_callback(move |_: &mut SslRef, list: &[u8]| {
@@ -326,14 +326,12 @@ pub fn hyper_from_pem_data<'a>(cert: &'a [u8], key: &'a [u8], protocols: Protoco
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    
-    const CERT: &[u8] = include_bytes!("../data/cert.pem");
-    const KEY: &[u8] = include_bytes!("../data/key.pem");
-    
     #[test]
     #[cfg(feature = "tls-rustls")]
     fn test_rustls_server_config_from_readers() {
+        use super::*;
+        const CERT: &[u8] = include_bytes!("../data/cert.pem");
+        const KEY: &[u8] = include_bytes!("../data/key.pem");
         let config = rustls_server_config_from_readers(CERT, KEY, Protocols::ALL).unwrap();
         #[cfg(all(feature = "hyper-h1", feature = "hyper-h2"))]
         assert_eq!(config.alpn_protocols, vec![ b"h2".to_vec(), b"http/1.1".to_vec() ]);
