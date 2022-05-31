@@ -160,8 +160,8 @@ fn rustls_server_config_from_readers<R: std::io::Read>(cert: R, key: R,
 ///
 /// Creates the RusTLS server configuration. Certificate and key will be obtained from files.
 /// Protocols determines list of protocols that will be supported.
-pub fn rustls_server_config_from_pem_files<P: AsRef<Path>>(cert_file: P, key_file: P,
-                protocols: Protocols) -> Result<ServerConfig, Error> {
+pub fn rustls_server_config_from_pem_files<P: AsRef<Path>, Q: AsRef<Path>>(cert_file: P,
+                key_file: Q, protocols: Protocols) -> Result<ServerConfig, Error> {
     use std::fs::File;
     rustls_server_config_from_readers(File::open(cert_file)?, File::open(key_file)?,
                     protocols)
@@ -212,8 +212,8 @@ fn ssl_context_set_alpns(builder: &mut SslContextBuilder, protocols: Protocols)
 ///
 /// Creates the SSL context builder. Certificate and key will be obtained from files.
 /// Protocols determines list of protocols that will be supported.
-pub fn ssl_context_builder_from_pem_files<P: AsRef<Path>>(cert_file: P, key_file: P,
-                protocols: Protocols) -> Result<SslContextBuilder, Error> {
+pub fn ssl_context_builder_from_pem_files<P: AsRef<Path>, Q: AsRef<Path>>(cert_file: P,
+                key_file: Q, protocols: Protocols) -> Result<SslContextBuilder, Error> {
     let mut builder = SslContext::builder(SslMethod::tls_server()).unwrap();
     builder.set_certificate_file(cert_file, SslFiletype::PEM)?;
     builder.set_private_key_file(key_file, SslFiletype::PEM)?;
@@ -252,8 +252,9 @@ pub type TlsListener = tls_listener::TlsListener<WrappedAccept<AddrIncoming>, Ss
 /// let listener = listener_from_pem_files("cert.pem", "key.pem", Protocols::ALL, &addr)?;
 /// let server = Server::builder(listener).serve(make_svc);
 /// ```
-pub fn listener_from_pem_files<P: AsRef<Path>>(cert_file: P, key_file: P,
-                protocols: Protocols, addr: &SocketAddr) -> Result<TlsListener, Error> {
+pub fn listener_from_pem_files<P: AsRef<Path>, Q: AsRef<Path>>(cert_file: P,
+                key_file: Q, protocols: Protocols, addr: &SocketAddr)
+                -> Result<TlsListener, Error> {
     #[cfg(feature = "tls-rustls")]
     let acceptor = {
         use std::sync::Arc;
@@ -302,8 +303,9 @@ pub fn listener_from_pem_data<'a>(cert: &'a [u8], key: &'a [u8],
 /// let server = hyper_from_pem_files("cert.pem", "key.pem", Protocols::ALL, &addr)?
 ///             .serve(make_svc);
 /// ```
-pub fn hyper_from_pem_files<P: AsRef<Path>>(cert_file: P, key_file: P, protocols: Protocols,
-                addr: &SocketAddr) -> Result<Builder<TlsListener>, Error> {
+pub fn hyper_from_pem_files<P: AsRef<Path>, Q: AsRef<Path>>(cert_file: P, key_file: Q,
+                protocols: Protocols, addr: &SocketAddr)
+                -> Result<Builder<TlsListener>, Error> {
     let listener = listener_from_pem_files(cert_file, key_file, protocols, addr)?;
     let builder = Server::builder(listener);
     Ok(match protocols {
