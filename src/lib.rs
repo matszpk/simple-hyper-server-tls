@@ -38,8 +38,6 @@
 //! * `hyper-h2` - for HTTP/2.
 //!
 //! ## List of other features
-//! * `hyper` - enables hyper server,
-//! * `hyper-stream` - enables hyper `stream` feature,
 //! * `hyper-full-server` - enables all features for hyper server.
 //!
 //! ## Examples
@@ -89,9 +87,7 @@ use openssl::ssl::{SslContext, SslContextBuilder, SslFiletype, SslMethod, SslRef
 use openssl::x509::X509;
 #[cfg(feature = "tls-openssl")]
 use openssl::pkey::PKey;
-#[cfg(feature = "hyper")]
 use hyper::server::{Server, Builder};
-#[cfg(feature = "hyper")]
 use hyper::server::conn::AddrIncoming;
 #[cfg(any(feature = "tls-rustls", feature = "tls-openssl"))]
 use tls_listener::hyper::WrappedAccept;
@@ -102,7 +98,6 @@ pub use rustls;
 pub use openssl;
 #[cfg(any(feature = "tls-rustls", feature = "tls-openssl"))]
 pub use tls_listener;
-#[cfg(feature = "hyper")]
 pub use hyper;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -280,7 +275,6 @@ pub fn listener_from_pem_data<'a>(cert: &'a [u8], key: &'a [u8],
     Ok(TlsListener::new_hyper(acceptor, AddrIncoming::bind(&addr)?))
 }
 
-#[cfg(feature = "hyper")]
 /// The highest level function.
 /// Creates the Hyper server builder. Certificate and key will be obtained from files.
 /// Protocols determines list of protocols that will be supported.
@@ -302,7 +296,6 @@ pub fn hyper_from_pem_files<P: AsRef<Path>>(cert_file: P, key_file: P, protocols
     })
 }
 
-#[cfg(feature = "hyper")]
 /// The highest level function.
 /// Creates the Hyper server builder. Certificate and key will be obtained from data.
 /// Protocols determines list of protocols that will be supported.

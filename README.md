@@ -20,8 +20,6 @@ to choose only one version by disabling default features and choose one of featu
 * `hyper-h2` - for HTTP/2.
 
 ## List of other features
-* `hyper` - enables hyper server,
-* `hyper-stream` - enables hyper `stream` feature,
 * `hyper-full-server` - enables all features for hyper server.
 
 ## Examples
