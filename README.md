@@ -1,6 +1,6 @@
 # Simple Hyper Server TLS
 
-[![LGPL 2.1 License](https://img.shields.io/badge/Lincese-LGPL--2.1-brightgreen)](https://www.gnu.org/licenses/old-licenses/lgpl-2.1.html)
+[![LGPL 2.1 License](https://img.shields.io/badge/License-LGPL--2.1-brightgreen)](https://www.gnu.org/licenses/old-licenses/lgpl-2.1.html)
 [![Crate version](https://img.shields.io/crates/v/simple-hyper-server-tls)](https://crates.io/crates/simple-hyper-server-tls)
 [![Docs](https://docs.rs/simple-hyper-server-tls/badge.svg)](https://docs.rs/simple-hyper-server-tls)
 
