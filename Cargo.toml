@@ -8,7 +8,7 @@ description = "Simplify initialization TLS for Hyper server"
 repository = "https://github.com/matszpk/simple-hyper-server-tls"
 documentation = "https://docs.rs/simple-hyper-server-tls"
 categories = ["network-programming"]
-keywords = ["web", "server", "http", "http2", "hyper", "tls", "ssl"]
+keywords = ["web", "server", "http", "http2", "hyper", "tls", "ssl", "openssl", "rustls"]
 
 [dependencies]
 tls-listener = { version = "0.5", optional = true }
