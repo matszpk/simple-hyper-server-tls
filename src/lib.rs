@@ -69,7 +69,7 @@
 //! }
 //! ```
 //!
-//! The additional functions can be used for customization of the TLS configuration.
+//! Additional functions can be used for customization of the TLS configuration.
 
 use std::path::Path;
 use std::net::SocketAddr;
