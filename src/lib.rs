@@ -33,9 +33,10 @@
 //! due to some problems, like lacks of some CPU instructions needed by `ring` crate.
 //! For other systems, `tls-rustls` should be preferred.
 //!
-//! By default two versions of protocols is enabled (HTTP/1.1, HTTP/2). It is possible
-//! to choose only one version by disabling default features and choose one of features:
-//! * `hyper-h1` - for HTTP/1.1,
+//! By default two versions of protocols is enabled (HTTP/1.0, HTTP/1.1, HTTP/2).
+//! It is possible to choose only one version by disabling default features and choose
+//! one of features:
+//! * `hyper-h1` - for HTTP/1.0 or HTTP/1.1,
 //! * `hyper-h2` - for HTTP/2.
 //!
 //! ## List of other features
@@ -108,7 +109,7 @@ pub enum Protocols {
     ALL,
     #[cfg(feature = "hyper-h1")]
     #[cfg_attr(docsrs, doc(cfg(feature = "hyper-h1")))]
-    /// Only HTTP/1.1 if enabled by hyper-h1.
+    /// Only HTTP1.0 or HTTP/1.1 if enabled by hyper-h1.
     HTTP1,
     #[cfg(feature = "hyper-h2")]
     #[cfg_attr(docsrs, doc(cfg(feature = "hyper-h2")))]
@@ -137,16 +138,16 @@ fn rustls_server_config_from_readers<R: std::io::Read>(cert: R, key: R,
     // set up ALPN protocols based on Protocols
     config.alpn_protocols = match protocols {
         #[cfg(all(feature = "hyper-h1", feature = "hyper-h2"))]
-        Protocols::ALL => vec![ b"h2".to_vec(), b"http/1.1".to_vec() ],
+        Protocols::ALL => vec![ b"h2".to_vec(), b"http/1.1".to_vec(), b"http/1.0".to_vec() ],
         
         #[cfg(all(feature = "hyper-h1", not(feature = "hyper-h2")))]
-        Protocols::ALL => vec![ b"http/1.1".to_vec() ],
+        Protocols::ALL => vec![ b"http/1.1".to_vec(), b"http/1.0".to_vec() ],
         
         #[cfg(all(not(feature = "hyper-h1"), feature = "hyper-h2"))]
         Protocols::ALL => vec![ b"h2".to_vec() ],
         
         #[cfg(feature = "hyper-h1")]
-        Protocols::HTTP1 => vec![ b"http/1.1".to_vec() ],
+        Protocols::HTTP1 => vec![ b"http/1.1".to_vec(), b"http/1.0".to_vec() ],
         #[cfg(feature = "hyper-h2")]
         Protocols::HTTP2 => vec![ b"h2".to_vec() ],
     };
@@ -183,16 +184,16 @@ fn ssl_context_set_alpns(builder: &mut SslContextBuilder, protocols: Protocols)
     // set up ALPN protocols based on Protocols
     let protos = match protocols {
         #[cfg(all(feature = "hyper-h1", feature = "hyper-h2"))]
-        Protocols::ALL => &b"\x02h2\x08http/1.1"[..],
+        Protocols::ALL => &b"\x02h2\x08http/1.1\x08http/1.0"[..],
         
         #[cfg(all(feature = "hyper-h1", not(feature = "hyper-h2")))]
-        Protocols::ALL => &b"\x08http/1.1"[..],
+        Protocols::ALL => &b"\x08http/1.1\x08http/1.0"[..],
         
         #[cfg(all(not(feature = "hyper-h1"), feature = "hyper-h2"))]
         Protocols::ALL => &b"\x02h2"[..],
         
         #[cfg(feature = "hyper-h1")]
-        Protocols::HTTP1 => &b"\x08http/1.1"[..],
+        Protocols::HTTP1 => &b"\x08http/1.1\x08http/1.0"[..],
         #[cfg(feature = "hyper-h2")]
         Protocols::HTTP2 => &b"\x02h2"[..],
     };
@@ -346,17 +347,19 @@ mod tests {
         const KEY: &[u8] = include_bytes!("../data/key.pem");
         let config = rustls_server_config_from_readers(CERT, KEY, Protocols::ALL).unwrap();
         #[cfg(all(feature = "hyper-h1", feature = "hyper-h2"))]
-        assert_eq!(config.alpn_protocols, vec![ b"h2".to_vec(), b"http/1.1".to_vec() ]);
+        assert_eq!(config.alpn_protocols, vec![ b"h2".to_vec(), b"http/1.1".to_vec(),
+                                        b"http/1.0".to_vec() ]);
         #[cfg(all(not(feature = "hyper-h1"), feature = "hyper-h2"))]
         assert_eq!(config.alpn_protocols, vec![ b"h2".to_vec() ]);
         #[cfg(all(feature = "hyper-h1", not(feature = "hyper-h2")))]
-        assert_eq!(config.alpn_protocols, vec![ b"http/1.1".to_vec() ]);
+        assert_eq!(config.alpn_protocols, vec![ b"http/1.1".to_vec(), b"http/1.0".to_vec() ]);
         
         #[cfg(feature = "hyper-h1")]
         {
             let config = rustls_server_config_from_readers(CERT, KEY,
                             Protocols::HTTP1).unwrap();
-            assert_eq!(config.alpn_protocols, vec![ b"http/1.1".to_vec() ]);
+            assert_eq!(config.alpn_protocols, vec![ b"http/1.1".to_vec(),
+                                        b"http/1.0".to_vec() ]);
         }
         #[cfg(feature = "hyper-h2")]
         {

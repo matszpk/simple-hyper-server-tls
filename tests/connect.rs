@@ -57,7 +57,7 @@ async fn make_server(port: u16, protos: Protocols, rx: Receiver<()>)
 
 // test for all protocols
 #[tokio::test]
-async fn test_http2_connect_proto_all() {
+async fn test_http_connect_proto_all() {
     let (tx, rx) = channel();
     let future = make_server(3000, Protocols::ALL, rx).await;
     
@@ -78,7 +78,7 @@ async fn test_http2_connect_proto_all() {
 // test for all HTTP/2
 #[tokio::test]
 #[cfg(feature = "hyper-h2")]
-async fn test_http2_connect_proto_http2() {
+async fn test_http_connect_proto_http2() {
     let (tx, rx) = channel();
     let future = make_server(3001, Protocols::HTTP2, rx).await;
     
@@ -96,7 +96,7 @@ async fn test_http2_connect_proto_http2() {
 // test for all HTTP/1.1
 #[tokio::test]
 #[cfg(feature = "hyper-h1")]
-async fn test_http2_connect_proto_http1() {
+async fn test_http_connect_proto_http1() {
     let (tx, rx) = channel();
     let future = make_server(3002, Protocols::HTTP1, rx).await;
     

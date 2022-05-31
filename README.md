@@ -15,13 +15,14 @@ feature that one of:
 * `tls-rustls` - RusTLS - native for Rust TLS implementation based on tokio-rustls,
 * `tls-openssl` - OpenSSL - TLS implementation based native OpenSSL library and openssl.
 
-The tls-openssl is recommended for systems which can not handle rustls due to some problems,
-like lacks of some CPU instructions needed by `ring` crate. For other systems,
-tls-rustls should be preferred.
+The `tls-openssl` is recommended for systems which can not handle rustls
+due to some problems, like lacks of some CPU instructions needed by `ring` crate.
+For other systems, `tls-rustls` should be preferred.
 
-By default two versions of protocols is enabled (HTTP/1.1, HTTP/2). It is possible
-to choose only one version by disabling default features and choose one of features:
-* `hyper-h1` - for HTTP/1.1,
+By default two versions of protocols is enabled (HTTP/1.0, HTTP/1.1, HTTP/2).
+It is possible to choose only one version by disabling default features and choose
+one of features:
+* `hyper-h1` - for HTTP/1.0 or HTTP/1.1,
 * `hyper-h2` - for HTTP/2.
 
 ## List of other features
@@ -41,7 +42,7 @@ async fn handle(_: Request<Body>) -> Result<Response<Body>, Infallible> {
 }
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
 
     let make_svc = make_service_fn(|_conn| async {
@@ -52,7 +53,8 @@ async fn main() {
     while let Err(e) = (&mut server).await {
         eprintln!("server error: {}", e);
     }
+    Ok(())
 }
 ```
 
-The additional functions can be used for customization of the TLS configuration.
+Additional functions can be used for customization of the TLS configuration.

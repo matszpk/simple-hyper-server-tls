@@ -2,9 +2,9 @@
 name = "simple-hyper-server-tls"
 authors = ["Mateusz Szpakowski"]
 license = "LGPL-2.1-or-later"
-version = "0.1.2"
+version = "0.1.3"
 edition = "2018"
-description = "Simplify initialization TLS for Hyper server"
+description = "Simplify TLS configuration for Hyper server"
 repository = "https://github.com/matszpk/simple-hyper-server-tls"
 documentation = "https://docs.rs/simple-hyper-server-tls"
 categories = ["network-programming"]
