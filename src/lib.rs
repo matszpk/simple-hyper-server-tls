@@ -33,7 +33,7 @@
 //! due to some problems, like lacks of some CPU instructions needed by `ring` crate.
 //! For other systems, `tls-rustls` should be preferred.
 //!
-//! By default three versions of protocols are enabled (HTTP/1.0, HTTP/1.1, HTTP/2).
+//! By default three versions of HTTP protocol are enabled (HTTP/1.0, HTTP/1.1, HTTP/2).
 //! It is possible to choose only one version by disabling default features and choose
 //! one of features:
 //! * `hyper-h1` - for HTTP/1.0 or HTTP/1.1,
