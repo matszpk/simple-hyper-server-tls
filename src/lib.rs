@@ -33,7 +33,7 @@
 //! due to some problems, like lacks of some CPU instructions needed by `ring` crate.
 //! For other systems, `tls-rustls` should be preferred.
 //!
-//! By default two versions of protocols is enabled (HTTP/1.0, HTTP/1.1, HTTP/2).
+//! By default three versions of protocols is enabled (HTTP/1.0, HTTP/1.1, HTTP/2).
 //! It is possible to choose only one version by disabling default features and choose
 //! one of features:
 //! * `hyper-h1` - for HTTP/1.0 or HTTP/1.1,
@@ -105,11 +105,11 @@ pub use hyper;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 /// Defines protocols that will be used in TLS configuration.
 pub enum Protocols {
-    /// All protocols enabled by features (HTTP/1.1, HTTP/2).
+    /// All protocols enabled by features (HTTP/1.0, HTTP/1.1, HTTP/2).
     ALL,
     #[cfg(feature = "hyper-h1")]
     #[cfg_attr(docsrs, doc(cfg(feature = "hyper-h1")))]
-    /// Only HTTP1.0 or HTTP/1.1 if enabled by hyper-h1.
+    /// Only HTTP/1.0 or HTTP/1.1 if enabled by hyper-h1.
     HTTP1,
     #[cfg(feature = "hyper-h2")]
     #[cfg_attr(docsrs, doc(cfg(feature = "hyper-h2")))]
