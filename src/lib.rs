@@ -70,13 +70,6 @@
 //! ```
 //!
 //! Additional functions can be used for customization of the TLS configuration.
-//! Low-level functions:
-//! * `rustls_server_config_from_pem_files` - available only for `tls-rustls`,
-//! * `rustls_server_config_from_pem_data` - available only for `tls-rustls`,
-//! * `ssl_context_builder_from_pem_files` - available only for `tls-openssl`,
-//! * `ssl_context_builder_from_pem_data` - available only for `tls-openssl`,
-//!
-//! can be used for prepare TLS server configuration to further customization.
 
 use std::path::Path;
 use std::net::SocketAddr;
@@ -236,11 +229,9 @@ pub fn ssl_context_builder_from_pem_data<'a>(cert: &'a [u8], key: &'a [u8],
 }
 
 #[cfg(feature = "tls-rustls")]
-#[cfg_attr(docsrs, doc(cfg(feature = "tls-rustls")))]
 /// TlsListener for hyper server.
 pub type TlsListener = tls_listener::TlsListener<WrappedAccept<AddrIncoming>, TlsAcceptor>;
-#[cfg(feature = "tls-openssl")]
-#[cfg_attr(docsrs, doc(cfg(feature = "tls-openssl")))]
+#[cfg(all(not(docsrs), feature = "tls-openssl"))]
 /// TlsListener for hyper server.
 pub type TlsListener = tls_listener::TlsListener<WrappedAccept<AddrIncoming>, SslContext>;
 
