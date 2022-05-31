@@ -18,10 +18,11 @@
 // Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 #![cfg_attr(docsrs, feature(doc_cfg))]
-//! The library to simplify TLS configuration for Hyper server.
+//! The library to simplify TLS configuration for Hyper server including ALPN
+//! (Application-Layer Protocol Negotiation) setup.
 //! This library setup TLS configuration suitable for clients.
-//! The configuration includes the HTTP protocol choice setup thanks to the almost
-//! clients can choose for example HTTP/2 protocol.
+//! The configuration includes the HTTP protocol choice setup (ALPN mechanism setup)
+//! thanks to the almost clients can choose for example HTTP/2 protocol.
 //!
 //! The usage of this library requires choose suitable the TLS implementation, by choosing
 //! feature that one of:
@@ -106,9 +107,11 @@ pub enum Protocols {
     /// All protocols enabled by features (HTTP/1.1, HTTP/2).
     ALL,
     #[cfg(feature = "hyper-h1")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "hyper-h1")))]
     /// Only HTTP/1.1 if enabled by hyper-h1.
     HTTP1,
     #[cfg(feature = "hyper-h2")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "hyper-h2")))]
     /// Only HTTP/2 if enabled by hyper-h2.
     HTTP2,
 }
@@ -151,6 +154,7 @@ fn rustls_server_config_from_readers<R: std::io::Read>(cert: R, key: R,
 }
 
 #[cfg(feature = "tls-rustls")]
+#[cfg_attr(docsrs, doc(cfg(feature = "tls-rustls")))]
 /// The low-level function to retrieve configuration to further customization.
 ///
 /// Creates the RusTLS server configuration. Certificate and key will be obtained from files.
@@ -163,6 +167,7 @@ pub fn rustls_server_config_from_pem_files<P: AsRef<Path>>(cert_file: P, key_fil
 }
 
 #[cfg(feature = "tls-rustls")]
+#[cfg_attr(docsrs, doc(cfg(feature = "tls-rustls")))]
 /// The low-level function to retrieve configuration to further customization.
 ///
 /// Creates the RusTLS server configuration. Certificate and key will be obtained from data.
@@ -201,6 +206,7 @@ fn ssl_context_set_alpns(builder: &mut SslContextBuilder, protocols: Protocols)
 }
 
 #[cfg(feature = "tls-openssl")]
+#[cfg_attr(docsrs, doc(cfg(feature = "tls-openssl")))]
 /// The low-level function to retrieve configuration to further customization.
 ///
 /// Creates the SSL context builder. Certificate and key will be obtained from files.
@@ -215,6 +221,7 @@ pub fn ssl_context_builder_from_pem_files<P: AsRef<Path>>(cert_file: P, key_file
 }
 
 #[cfg(feature = "tls-openssl")]
+#[cfg_attr(docsrs, doc(cfg(feature = "tls-openssl")))]
 /// The low-level function to retrieve configuration to further customization.
 ///
 /// Creates the SSL context builder. Certificate and key will be obtained from data.

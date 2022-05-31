@@ -1,9 +1,14 @@
 # Simple Hyper Server TLS
 
-The library to simplify TLS configuration for Hyper server.
+[![LGPL 2.1 License](https://img.shields.io/badge/Lincese-LGPL--2.1-brightgreen)](https://www.gnu.org/licenses/old-licenses/lgpl-2.1.html)
+[![Crate version](https://img.shields.io/crates/v/simple-hyper-server-tls)](https://crates.io/crates/simple-hyper-server-tls)
+[![Docs](https://docs.rs/simple-hyper-server-tls/badge.svg)](https://docs.rs/simple-hyper-server-tls)
+
+The library to simplify TLS configuration for Hyper server including ALPN
+(Application-Layer Protocol Negotiation) setup.
 This library setup TLS configuration suitable for clients.
-The configuration includes the HTTP protocol choice setup thanks to the almost
-clients can choose for example HTTP/2 protocol.
+The configuration includes the HTTP protocol choice setup (ALPN mechanism setup)
+thanks to the almost clients can choose for example HTTP/2 protocol.
 
 The usage of this library requires choose suitable the TLS implementation, by choosing
 feature that one of:
@@ -50,4 +55,4 @@ async fn main() {
 }
 ```
 
-The additional function can be used for customization of the TLS configuration.
+The additional functions can be used for customization of the TLS configuration.
