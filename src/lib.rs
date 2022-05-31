@@ -120,6 +120,7 @@ pub type Error = Box<dyn std::error::Error>;
 fn rustls_server_config_from_readers<R: std::io::Read>(cert: R, key: R,
                 protocols: Protocols) -> Result<ServerConfig, Error> {
     use std::io::{self, BufReader};
+    // load certificates and keys from Read
     let certs = rustls_pemfile::certs(&mut BufReader::new(cert))
             .map(|mut certs| certs.drain(..).map(Certificate).collect())?;
     let mut keys: Vec<PrivateKey> = rustls_pemfile::pkcs8_private_keys(
@@ -130,6 +131,7 @@ fn rustls_server_config_from_readers<R: std::io::Read>(cert: R, key: R,
                 .with_single_cert(certs, keys.remove(0))
                 .map_err(|err| io::Error::new(io::ErrorKind::InvalidInput, err))?;
     
+    // set up ALPN protocols based on Protocols
     config.alpn_protocols = match protocols {
         #[cfg(all(feature = "hyper-h1", feature = "hyper-h2"))]
         Protocols::ALL => vec![ b"h2".to_vec(), b"http/1.1".to_vec() ],
@@ -171,6 +173,7 @@ pub fn rustls_server_config_from_pem_data<'a>(cert: &'a [u8], key: &'a [u8],
 #[cfg(feature = "tls-openssl")]
 fn ssl_context_set_alpns(builder: &mut SslContextBuilder, protocols: Protocols)
              -> Result<(), Error> {
+    // set up ALPN protocols based on Protocols
     let protos = match protocols {
         #[cfg(all(feature = "hyper-h1", feature = "hyper-h2"))]
         Protocols::ALL => &b"\x02h2\x08http/1.1"[..],
@@ -187,6 +190,7 @@ fn ssl_context_set_alpns(builder: &mut SslContextBuilder, protocols: Protocols)
         Protocols::HTTP2 => &b"\x02h2"[..],
     };
     builder.set_alpn_protos(protos)?;
+    // set uo ALPN selection routine - as select_next_proto
     builder.set_alpn_select_callback(move |_: &mut SslRef, list: &[u8]| {
             openssl::ssl::select_next_proto(protos, list).ok_or(
                     openssl::ssl::AlpnError::NOACK)
@@ -222,9 +226,11 @@ pub fn ssl_context_builder_from_pem_data<'a>(cert: &'a [u8], key: &'a [u8],
 
 #[cfg(feature = "tls-rustls")]
 #[cfg_attr(docsrs, doc(cfg(feature = "tls-rustls")))]
+/// TlsListener for hyper server.
 pub type TlsListener = tls_listener::TlsListener<WrappedAccept<AddrIncoming>, TlsAcceptor>;
 #[cfg(feature = "tls-openssl")]
 #[cfg_attr(docsrs, doc(cfg(feature = "tls-openssl")))]
+/// TlsListener for hyper server.
 pub type TlsListener = tls_listener::TlsListener<WrappedAccept<AddrIncoming>, SslContext>;
 
 /// The higher level function.

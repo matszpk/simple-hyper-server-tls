@@ -24,7 +24,7 @@ use simple_hyper_server_tls::*;
 use hyper::{Body, Request, Response};
 use hyper::service::{make_service_fn, service_fn};
 use futures::Future;
-use reqwest::{Client, Version};
+use reqwest::{Client, Version, StatusCode};
 use reqwest::tls::Certificate;
 
 #[cfg(not(target_os = "windows"))]
@@ -50,10 +50,12 @@ async fn make_server(port: u16, protos: Protocols, rx: Receiver<()>)
     });
     let server = hyper_from_pem_data(CERT, KEY, protos, &addr).unwrap()
                     .serve(make_svc);
+    // for graceful shutting down
     let graceful = server.with_graceful_shutdown(async move { rx.await.unwrap() });
     graceful
 }
 
+// test for all protocols
 #[tokio::test]
 async fn test_http2_connect_proto_all() {
     let (tx, rx) = channel();
@@ -68,10 +70,12 @@ async fn test_http2_connect_proto_all() {
     assert_eq!(Version::HTTP_2, resp.version());
     #[cfg(not(feature = "hyper-h2"))]
     assert_eq!(Version::HTTP_11, resp.version());
+    assert_eq!(StatusCode::OK, resp.status());
     
     tx.send(()).unwrap();
 }
 
+// test for all HTTP/2
 #[tokio::test]
 #[cfg(feature = "hyper-h2")]
 async fn test_http2_connect_proto_http2() {
@@ -84,10 +88,12 @@ async fn test_http2_connect_proto_http2() {
                     Certificate::from_pem(CERT).unwrap()).build().unwrap();
     let resp = client.get("https://localhost:3001/").send().await.unwrap();
     assert_eq!(Version::HTTP_2, resp.version());
+    assert_eq!(StatusCode::OK, resp.status());
     
     tx.send(()).unwrap();
 }
 
+// test for all HTTP/1.1
 #[tokio::test]
 #[cfg(feature = "hyper-h1")]
 async fn test_http2_connect_proto_http1() {
@@ -100,6 +106,7 @@ async fn test_http2_connect_proto_http1() {
                     Certificate::from_pem(CERT).unwrap()).build().unwrap();
     let resp = client.get("https://localhost:3002/").send().await.unwrap();
     assert_eq!(Version::HTTP_11, resp.version());
+    assert_eq!(StatusCode::OK, resp.status());
     
     tx.send(()).unwrap();
 }
