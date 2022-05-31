@@ -33,8 +33,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let make_svc = make_service_fn(|_conn| async {
         Ok::<_, Infallible>(service_fn(handle))
     });
+    #[cfg(not(target_os = "windows"))]
     const CERT: &[u8] = include_bytes!("../data/cert.pem");
+    #[cfg(not(target_os = "windows"))]
     const KEY: &[u8] = include_bytes!("../data/key.pem");
+
+    #[cfg(target_os = "windows")]
+    const CERT: &[u8] = include_bytes!("..\\data\\cert.pem");
+    #[cfg(target_os = "windows")]
+    const KEY: &[u8] = include_bytes!("..\\data\\key.pem");
     let mut server = hyper_from_pem_data(CERT, KEY, Protocols::ALL, &addr)?
                     .serve(make_svc);
     while let Err(e) = (&mut server).await {

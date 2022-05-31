@@ -27,8 +27,15 @@ use futures::Future;
 use reqwest::{Client, Version};
 use reqwest::tls::Certificate;
 
+#[cfg(not(target_os = "windows"))]
 const CERT: &[u8] = include_bytes!("../data/cert.pem");
+#[cfg(not(target_os = "windows"))]
 const KEY: &[u8] = include_bytes!("../data/key.pem");
+
+#[cfg(target_os = "windows")]
+const CERT: &[u8] = include_bytes!("..\\data\\cert.pem");
+#[cfg(target_os = "windows")]
+const KEY: &[u8] = include_bytes!("..\\data\\key.pem");
 
 async fn handle(_: Request<Body>) -> Result<Response<Body>, Infallible> {
     Ok(Response::new("Hello, World!".into()))
