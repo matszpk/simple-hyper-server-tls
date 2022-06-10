@@ -158,7 +158,7 @@ fn rustls_server_config_from_readers<R: std::io::Read>(cert: R, key: R,
 #[cfg_attr(docsrs, doc(cfg(feature = "tls-rustls")))]
 /// The low-level function to retrieve configuration to further customization.
 ///
-/// Creates the RusTLS server configuration. Certificate and key will be obtained from files.
+/// Creates the RusTLS server configuration. Certificates and key will be obtained from files.
 /// Protocols determines list of protocols that will be supported.
 pub fn rustls_server_config_from_pem_files<P: AsRef<Path>, Q: AsRef<Path>>(cert_file: P,
                 key_file: Q, protocols: Protocols) -> Result<ServerConfig, Error> {
@@ -171,7 +171,7 @@ pub fn rustls_server_config_from_pem_files<P: AsRef<Path>, Q: AsRef<Path>>(cert_
 #[cfg_attr(docsrs, doc(cfg(feature = "tls-rustls")))]
 /// The low-level function to retrieve configuration to further customization.
 ///
-/// Creates the RusTLS server configuration. Certificate and key will be obtained from data.
+/// Creates the RusTLS server configuration. Certificates and key will be obtained from data.
 /// Protocols determines list of protocols that will be supported.
 pub fn rustls_server_config_from_pem_data<'a>(cert: &'a [u8], key: &'a [u8],
                 protocols: Protocols) -> Result<ServerConfig, Error> {
@@ -210,12 +210,12 @@ fn ssl_context_set_alpns(builder: &mut SslContextBuilder, protocols: Protocols)
 #[cfg_attr(docsrs, doc(cfg(feature = "tls-openssl")))]
 /// The low-level function to retrieve configuration to further customization.
 ///
-/// Creates the SSL context builder. Certificate and key will be obtained from files.
+/// Creates the SSL context builder. Certificates and key will be obtained from files.
 /// Protocols determines list of protocols that will be supported.
 pub fn ssl_context_builder_from_pem_files<P: AsRef<Path>, Q: AsRef<Path>>(cert_file: P,
                 key_file: Q, protocols: Protocols) -> Result<SslContextBuilder, Error> {
     let mut builder = SslContext::builder(SslMethod::tls_server()).unwrap();
-    builder.set_certificate_file(cert_file, SslFiletype::PEM)?;
+    builder.set_certificate_chain_file(cert_file)?;
     builder.set_private_key_file(key_file, SslFiletype::PEM)?;
     ssl_context_set_alpns(&mut builder, protocols)?;
     Ok(builder)
@@ -225,12 +225,15 @@ pub fn ssl_context_builder_from_pem_files<P: AsRef<Path>, Q: AsRef<Path>>(cert_f
 #[cfg_attr(docsrs, doc(cfg(feature = "tls-openssl")))]
 /// The low-level function to retrieve configuration to further customization.
 ///
-/// Creates the SSL context builder. Certificate and key will be obtained from data.
+/// Creates the SSL context builder. Certificates and key will be obtained from data.
 /// Protocols determines list of protocols that will be supported.
 pub fn ssl_context_builder_from_pem_data<'a>(cert: &'a [u8], key: &'a [u8],
                 protocols: Protocols) -> Result<SslContextBuilder, Error> {
     let mut builder = SslContext::builder(SslMethod::tls_server()).unwrap();
-    builder.set_certificate(X509::from_pem(cert)?.as_ref())?;
+    let mut certs = X509::stack_from_pem(cert)?;
+    let mut certs = certs.drain(..);
+    builder.set_certificate(certs.next().ok_or("no leaf certificate")?.as_ref())?;
+    certs.try_for_each(|cert| builder.add_extra_chain_cert(cert))?;
     builder.set_private_key(PKey::private_key_from_pem(key)?.as_ref())?;
     ssl_context_set_alpns(&mut builder, protocols)?;
     Ok(builder)
@@ -245,7 +248,7 @@ pub type TlsListener = tls_listener::TlsListener<WrappedAccept<AddrIncoming>, Ss
 
 /// The higher level function. Creates the TLS listener for Hyper server.
 ///
-/// Certificate and key will be obtained from files.
+/// Certificates and key will be obtained from files.
 /// Protocols determines list of protocols that will be supported.
 /// Typical usage is:
 /// ```no run
@@ -271,7 +274,7 @@ pub fn listener_from_pem_files<P: AsRef<Path>, Q: AsRef<Path>>(cert_file: P,
 
 /// The higher level function. Creates the TLS listener for Hyper server.
 ///
-///Certificate and key will be obtained from data.
+/// Certificates and key will be obtained from data.
 /// Protocols determines list of protocols that will be supported.
 /// Typical usage is:
 /// ```no run
@@ -296,7 +299,7 @@ pub fn listener_from_pem_data<'a>(cert: &'a [u8], key: &'a [u8],
 
 /// The highest level function. Creates the Hyper server builder.
 ///
-///Certificate and key will be obtained from files.
+/// Certificates and key will be obtained from files.
 /// Protocols determines list of protocols that will be supported.
 /// Typical usage is:
 /// ```no run
@@ -319,7 +322,7 @@ pub fn hyper_from_pem_files<P: AsRef<Path>, Q: AsRef<Path>>(cert_file: P, key_fi
 
 /// The highest level function. Creates the Hyper server builder.
 ///
-/// Certificate and key will be obtained from data.
+/// Certificates and key will be obtained from data.
 /// Protocols determines list of protocols that will be supported.
 /// Typical usage is:
 /// ```no run
