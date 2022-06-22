@@ -50,15 +50,15 @@
 //! use simple_hyper_server_tls::*;
 //! use hyper::{Body, Request, Response, Server};
 //! use hyper::service::{make_service_fn, service_fn};
-//! 
+//!
 //! async fn handle(_: Request<Body>) -> Result<Response<Body>, Infallible> {
 //!     Ok(Response::new("Hello, World!".into()))
 //! }
-//! 
+//!
 //! #[tokio::main]
 //! async fn main() -> Result<(), Box<dyn std::error::Error>> {
 //!     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
-//! 
+//!
 //!     let make_svc = make_service_fn(|_conn| async {
 //!         Ok::<_, Infallible>(service_fn(handle))
 //!     });
@@ -73,34 +73,34 @@
 //!
 //! Additional functions can be used for customization of the TLS configuration.
 
-use std::path::Path;
-use std::net::SocketAddr;
-#[cfg(feature = "tls-rustls")]
-use rustls::ServerConfig;
-#[cfg(feature = "tls-rustls")]
-use rustls_pemfile;
-#[cfg(feature = "tls-rustls")]
-use tokio_rustls::rustls::{Certificate, PrivateKey};
-#[cfg(feature = "tls-rustls")]
-use tokio_rustls::TlsAcceptor;
+use hyper::server::conn::AddrIncoming;
+use hyper::server::{Builder, Server};
+#[cfg(feature = "tls-openssl")]
+use openssl::pkey::PKey;
 #[cfg(feature = "tls-openssl")]
 use openssl::ssl::{SslContext, SslContextBuilder, SslFiletype, SslMethod, SslRef};
 #[cfg(feature = "tls-openssl")]
 use openssl::x509::X509;
-#[cfg(feature = "tls-openssl")]
-use openssl::pkey::PKey;
-use hyper::server::{Server, Builder};
-use hyper::server::conn::AddrIncoming;
+#[cfg(feature = "tls-rustls")]
+use rustls::ServerConfig;
+#[cfg(feature = "tls-rustls")]
+use rustls_pemfile;
+use std::net::SocketAddr;
+use std::path::Path;
 #[cfg(any(feature = "tls-rustls", feature = "tls-openssl"))]
 use tls_listener::hyper::WrappedAccept;
-
 #[cfg(feature = "tls-rustls")]
-pub use rustls;
+use tokio_rustls::rustls::{Certificate, PrivateKey};
+#[cfg(feature = "tls-rustls")]
+use tokio_rustls::TlsAcceptor;
+
+pub use hyper;
 #[cfg(feature = "tls-openssl")]
 pub use openssl;
+#[cfg(feature = "tls-rustls")]
+pub use rustls;
 #[cfg(any(feature = "tls-rustls", feature = "tls-openssl"))]
 pub use tls_listener;
-pub use hyper;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 /// Defines protocols that will be used in TLS configuration.
@@ -121,35 +121,38 @@ pub enum Protocols {
 pub type Error = Box<dyn std::error::Error>;
 
 #[cfg(feature = "tls-rustls")]
-fn rustls_server_config_from_readers<R: std::io::Read>(cert: R, key: R,
-                protocols: Protocols) -> Result<ServerConfig, Error> {
+fn rustls_server_config_from_readers<R: std::io::Read>(
+    cert: R,
+    key: R,
+    protocols: Protocols,
+) -> Result<ServerConfig, Error> {
     use std::io::{self, BufReader};
     // load certificates and keys from Read
     let certs = rustls_pemfile::certs(&mut BufReader::new(cert))
-            .map(|mut certs| certs.drain(..).map(Certificate).collect())?;
-    let mut keys: Vec<PrivateKey> = rustls_pemfile::pkcs8_private_keys(
-            &mut BufReader::new(key))
-            .map(|mut keys| keys.drain(..).map(PrivateKey).collect())?;
-    let mut config = ServerConfig::builder().with_safe_defaults()
-                .with_no_client_auth()
-                .with_single_cert(certs, keys.remove(0))
-                .map_err(|err| io::Error::new(io::ErrorKind::InvalidInput, err))?;
-    
+        .map(|mut certs| certs.drain(..).map(Certificate).collect())?;
+    let mut keys: Vec<PrivateKey> = rustls_pemfile::pkcs8_private_keys(&mut BufReader::new(key))
+        .map(|mut keys| keys.drain(..).map(PrivateKey).collect())?;
+    let mut config = ServerConfig::builder()
+        .with_safe_defaults()
+        .with_no_client_auth()
+        .with_single_cert(certs, keys.remove(0))
+        .map_err(|err| io::Error::new(io::ErrorKind::InvalidInput, err))?;
+
     // set up ALPN protocols based on Protocols
     config.alpn_protocols = match protocols {
         #[cfg(all(feature = "hyper-h1", feature = "hyper-h2"))]
-        Protocols::ALL => vec![ b"h2".to_vec(), b"http/1.1".to_vec(), b"http/1.0".to_vec() ],
-        
+        Protocols::ALL => vec![b"h2".to_vec(), b"http/1.1".to_vec(), b"http/1.0".to_vec()],
+
         #[cfg(all(feature = "hyper-h1", not(feature = "hyper-h2")))]
-        Protocols::ALL => vec![ b"http/1.1".to_vec(), b"http/1.0".to_vec() ],
-        
+        Protocols::ALL => vec![b"http/1.1".to_vec(), b"http/1.0".to_vec()],
+
         #[cfg(all(not(feature = "hyper-h1"), feature = "hyper-h2"))]
-        Protocols::ALL => vec![ b"h2".to_vec() ],
-        
+        Protocols::ALL => vec![b"h2".to_vec()],
+
         #[cfg(feature = "hyper-h1")]
-        Protocols::HTTP1 => vec![ b"http/1.1".to_vec(), b"http/1.0".to_vec() ],
+        Protocols::HTTP1 => vec![b"http/1.1".to_vec(), b"http/1.0".to_vec()],
         #[cfg(feature = "hyper-h2")]
-        Protocols::HTTP2 => vec![ b"h2".to_vec() ],
+        Protocols::HTTP2 => vec![b"h2".to_vec()],
     };
     Ok(config)
 }
@@ -160,11 +163,13 @@ fn rustls_server_config_from_readers<R: std::io::Read>(cert: R, key: R,
 ///
 /// Creates the RusTLS server configuration. Certificates and key will be obtained from files.
 /// Protocols determines list of protocols that will be supported.
-pub fn rustls_server_config_from_pem_files<P: AsRef<Path>, Q: AsRef<Path>>(cert_file: P,
-                key_file: Q, protocols: Protocols) -> Result<ServerConfig, Error> {
+pub fn rustls_server_config_from_pem_files<P: AsRef<Path>, Q: AsRef<Path>>(
+    cert_file: P,
+    key_file: Q,
+    protocols: Protocols,
+) -> Result<ServerConfig, Error> {
     use std::fs::File;
-    rustls_server_config_from_readers(File::open(cert_file)?, File::open(key_file)?,
-                    protocols)
+    rustls_server_config_from_readers(File::open(cert_file)?, File::open(key_file)?, protocols)
 }
 
 #[cfg(feature = "tls-rustls")]
@@ -173,25 +178,30 @@ pub fn rustls_server_config_from_pem_files<P: AsRef<Path>, Q: AsRef<Path>>(cert_
 ///
 /// Creates the RusTLS server configuration. Certificates and key will be obtained from data.
 /// Protocols determines list of protocols that will be supported.
-pub fn rustls_server_config_from_pem_data<'a>(cert: &'a [u8], key: &'a [u8],
-                protocols: Protocols) -> Result<ServerConfig, Error> {
+pub fn rustls_server_config_from_pem_data<'a>(
+    cert: &'a [u8],
+    key: &'a [u8],
+    protocols: Protocols,
+) -> Result<ServerConfig, Error> {
     rustls_server_config_from_readers(cert, key, protocols)
 }
 
 #[cfg(feature = "tls-openssl")]
-fn ssl_context_set_alpns(builder: &mut SslContextBuilder, protocols: Protocols)
-             -> Result<(), Error> {
+fn ssl_context_set_alpns(
+    builder: &mut SslContextBuilder,
+    protocols: Protocols,
+) -> Result<(), Error> {
     // set up ALPN protocols based on Protocols
     let protos = match protocols {
         #[cfg(all(feature = "hyper-h1", feature = "hyper-h2"))]
         Protocols::ALL => &b"\x02h2\x08http/1.1\x08http/1.0"[..],
-        
+
         #[cfg(all(feature = "hyper-h1", not(feature = "hyper-h2")))]
         Protocols::ALL => &b"\x08http/1.1\x08http/1.0"[..],
-        
+
         #[cfg(all(not(feature = "hyper-h1"), feature = "hyper-h2"))]
         Protocols::ALL => &b"\x02h2"[..],
-        
+
         #[cfg(feature = "hyper-h1")]
         Protocols::HTTP1 => &b"\x08http/1.1\x08http/1.0"[..],
         #[cfg(feature = "hyper-h2")]
@@ -200,8 +210,7 @@ fn ssl_context_set_alpns(builder: &mut SslContextBuilder, protocols: Protocols)
     builder.set_alpn_protos(protos)?;
     // set uo ALPN selection routine - as select_next_proto
     builder.set_alpn_select_callback(move |_: &mut SslRef, list: &[u8]| {
-            openssl::ssl::select_next_proto(protos, list).ok_or(
-                    openssl::ssl::AlpnError::NOACK)
+        openssl::ssl::select_next_proto(protos, list).ok_or(openssl::ssl::AlpnError::NOACK)
     });
     Ok(())
 }
@@ -212,8 +221,11 @@ fn ssl_context_set_alpns(builder: &mut SslContextBuilder, protocols: Protocols)
 ///
 /// Creates the SSL context builder. Certificates and key will be obtained from files.
 /// Protocols determines list of protocols that will be supported.
-pub fn ssl_context_builder_from_pem_files<P: AsRef<Path>, Q: AsRef<Path>>(cert_file: P,
-                key_file: Q, protocols: Protocols) -> Result<SslContextBuilder, Error> {
+pub fn ssl_context_builder_from_pem_files<P: AsRef<Path>, Q: AsRef<Path>>(
+    cert_file: P,
+    key_file: Q,
+    protocols: Protocols,
+) -> Result<SslContextBuilder, Error> {
     let mut builder = SslContext::builder(SslMethod::tls_server()).unwrap();
     builder.set_certificate_chain_file(cert_file)?;
     builder.set_private_key_file(key_file, SslFiletype::PEM)?;
@@ -227,8 +239,11 @@ pub fn ssl_context_builder_from_pem_files<P: AsRef<Path>, Q: AsRef<Path>>(cert_f
 ///
 /// Creates the SSL context builder. Certificates and key will be obtained from data.
 /// Protocols determines list of protocols that will be supported.
-pub fn ssl_context_builder_from_pem_data<'a>(cert: &'a [u8], key: &'a [u8],
-                protocols: Protocols) -> Result<SslContextBuilder, Error> {
+pub fn ssl_context_builder_from_pem_data<'a>(
+    cert: &'a [u8],
+    key: &'a [u8],
+    protocols: Protocols,
+) -> Result<SslContextBuilder, Error> {
     let mut builder = SslContext::builder(SslMethod::tls_server()).unwrap();
     let mut certs = X509::stack_from_pem(cert)?;
     let mut certs = certs.drain(..);
@@ -255,9 +270,12 @@ pub type TlsListener = tls_listener::TlsListener<WrappedAccept<AddrIncoming>, Ss
 /// let listener = listener_from_pem_files("cert.pem", "key.pem", Protocols::ALL, &addr)?;
 /// let server = Server::builder(listener).serve(make_svc);
 /// ```
-pub fn listener_from_pem_files<P: AsRef<Path>, Q: AsRef<Path>>(cert_file: P,
-                key_file: Q, protocols: Protocols, addr: &SocketAddr)
-                -> Result<TlsListener, Error> {
+pub fn listener_from_pem_files<P: AsRef<Path>, Q: AsRef<Path>>(
+    cert_file: P,
+    key_file: Q,
+    protocols: Protocols,
+    addr: &SocketAddr,
+) -> Result<TlsListener, Error> {
     #[cfg(feature = "tls-rustls")]
     let acceptor = {
         use std::sync::Arc;
@@ -281,8 +299,12 @@ pub fn listener_from_pem_files<P: AsRef<Path>, Q: AsRef<Path>>(cert_file: P,
 /// let listener = listener_from_pem_data(cert_data, key_data, Protocols::ALL, &addr)?;
 /// let server = Server::builder(listener).serve(make_svc);
 /// ```
-pub fn listener_from_pem_data<'a>(cert: &'a [u8], key: &'a [u8],
-                protocols: Protocols, addr: &SocketAddr) -> Result<TlsListener, Error> {
+pub fn listener_from_pem_data<'a>(
+    cert: &'a [u8],
+    key: &'a [u8],
+    protocols: Protocols,
+    addr: &SocketAddr,
+) -> Result<TlsListener, Error> {
     #[cfg(feature = "tls-rustls")]
     let acceptor = {
         use std::sync::Arc;
@@ -306,9 +328,12 @@ pub fn listener_from_pem_data<'a>(cert: &'a [u8], key: &'a [u8],
 /// let server = hyper_from_pem_files("cert.pem", "key.pem", Protocols::ALL, &addr)?
 ///             .serve(make_svc);
 /// ```
-pub fn hyper_from_pem_files<P: AsRef<Path>, Q: AsRef<Path>>(cert_file: P, key_file: Q,
-                protocols: Protocols, addr: &SocketAddr)
-                -> Result<Builder<TlsListener>, Error> {
+pub fn hyper_from_pem_files<P: AsRef<Path>, Q: AsRef<Path>>(
+    cert_file: P,
+    key_file: Q,
+    protocols: Protocols,
+    addr: &SocketAddr,
+) -> Result<Builder<TlsListener>, Error> {
     let listener = listener_from_pem_files(cert_file, key_file, protocols, addr)?;
     let builder = Server::builder(listener);
     Ok(match protocols {
@@ -329,8 +354,12 @@ pub fn hyper_from_pem_files<P: AsRef<Path>, Q: AsRef<Path>>(cert_file: P, key_fi
 /// let server = hyper_from_pem_data(cert_data, key_data, Protocols::ALL, &addr)?
 ///             .serve(make_svc);
 /// ```
-pub fn hyper_from_pem_data<'a>(cert: &'a [u8], key: &'a [u8], protocols: Protocols,
-                addr: &SocketAddr) -> Result<Builder<TlsListener>, Error> {
+pub fn hyper_from_pem_data<'a>(
+    cert: &'a [u8],
+    key: &'a [u8],
+    protocols: Protocols,
+    addr: &SocketAddr,
+) -> Result<Builder<TlsListener>, Error> {
     let listener = listener_from_pem_data(cert, key, protocols, addr)?;
     let builder = Server::builder(listener);
     Ok(match protocols {
@@ -352,25 +381,30 @@ mod tests {
         const KEY: &[u8] = include_bytes!("../data/key.pem");
         let config = rustls_server_config_from_readers(CERT, KEY, Protocols::ALL).unwrap();
         #[cfg(all(feature = "hyper-h1", feature = "hyper-h2"))]
-        assert_eq!(config.alpn_protocols, vec![ b"h2".to_vec(), b"http/1.1".to_vec(),
-                                        b"http/1.0".to_vec() ]);
+        assert_eq!(
+            config.alpn_protocols,
+            vec![b"h2".to_vec(), b"http/1.1".to_vec(), b"http/1.0".to_vec()]
+        );
         #[cfg(all(not(feature = "hyper-h1"), feature = "hyper-h2"))]
-        assert_eq!(config.alpn_protocols, vec![ b"h2".to_vec() ]);
+        assert_eq!(config.alpn_protocols, vec![b"h2".to_vec()]);
         #[cfg(all(feature = "hyper-h1", not(feature = "hyper-h2")))]
-        assert_eq!(config.alpn_protocols, vec![ b"http/1.1".to_vec(), b"http/1.0".to_vec() ]);
-        
+        assert_eq!(
+            config.alpn_protocols,
+            vec![b"http/1.1".to_vec(), b"http/1.0".to_vec()]
+        );
+
         #[cfg(feature = "hyper-h1")]
         {
-            let config = rustls_server_config_from_readers(CERT, KEY,
-                            Protocols::HTTP1).unwrap();
-            assert_eq!(config.alpn_protocols, vec![ b"http/1.1".to_vec(),
-                                        b"http/1.0".to_vec() ]);
+            let config = rustls_server_config_from_readers(CERT, KEY, Protocols::HTTP1).unwrap();
+            assert_eq!(
+                config.alpn_protocols,
+                vec![b"http/1.1".to_vec(), b"http/1.0".to_vec()]
+            );
         }
         #[cfg(feature = "hyper-h2")]
         {
-            let config = rustls_server_config_from_readers(CERT, KEY,
-                            Protocols::HTTP2).unwrap();
-            assert_eq!(config.alpn_protocols, vec![ b"h2".to_vec() ]);
+            let config = rustls_server_config_from_readers(CERT, KEY, Protocols::HTTP2).unwrap();
+            assert_eq!(config.alpn_protocols, vec![b"h2".to_vec()]);
         }
     }
 }

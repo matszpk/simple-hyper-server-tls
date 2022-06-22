@@ -17,11 +17,11 @@
 // License along with this library; if not, write to the Free Software
 // Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
+use hyper::service::{make_service_fn, service_fn};
+use hyper::{Body, Request, Response};
+use simple_hyper_server_tls::*;
 use std::{convert::Infallible, net::SocketAddr};
 use tokio;
-use simple_hyper_server_tls::*;
-use hyper::{Body, Request, Response};
-use hyper::service::{make_service_fn, service_fn};
 
 async fn handle(_: Request<Body>) -> Result<Response<Body>, Infallible> {
     Ok(Response::new("Hello, World!".into()))
@@ -30,9 +30,7 @@ async fn handle(_: Request<Body>) -> Result<Response<Body>, Infallible> {
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
 
-    let make_svc = make_service_fn(|_conn| async {
-        Ok::<_, Infallible>(service_fn(handle))
-    });
+    let make_svc = make_service_fn(|_conn| async { Ok::<_, Infallible>(service_fn(handle)) });
     #[cfg(not(target_os = "windows"))]
     const CERT: &[u8] = include_bytes!("../data/cert.pem");
     #[cfg(not(target_os = "windows"))]
@@ -42,8 +40,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     const CERT: &[u8] = include_bytes!("..\\data\\cert.pem");
     #[cfg(target_os = "windows")]
     const KEY: &[u8] = include_bytes!("..\\data\\key.pem");
-    let mut server = hyper_from_pem_data(CERT, KEY, Protocols::ALL, &addr)?
-                    .serve(make_svc);
+    let mut server = hyper_from_pem_data(CERT, KEY, Protocols::ALL, &addr)?.serve(make_svc);
     while let Err(e) = (&mut server).await {
         eprintln!("server error: {}", e);
     }

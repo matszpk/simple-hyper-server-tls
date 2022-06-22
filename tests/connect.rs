@@ -17,15 +17,15 @@
 // License along with this library; if not, write to the Free Software
 // Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
+use futures::Future;
+use hyper::service::{make_service_fn, service_fn};
+use hyper::{Body, Request, Response};
+use reqwest::tls::Certificate;
+use reqwest::{Client, StatusCode, Version};
+use simple_hyper_server_tls::*;
 use std::{convert::Infallible, net::SocketAddr};
 use tokio;
 use tokio::sync::oneshot::{channel, Receiver};
-use simple_hyper_server_tls::*;
-use hyper::{Body, Request, Response};
-use hyper::service::{make_service_fn, service_fn};
-use futures::Future;
-use reqwest::{Client, Version, StatusCode};
-use reqwest::tls::Certificate;
 
 #[cfg(not(target_os = "windows"))]
 const CERT: &[u8] = include_bytes!("../data/cert.pem");
@@ -41,15 +41,17 @@ async fn handle(_: Request<Body>) -> Result<Response<Body>, Infallible> {
     Ok(Response::new("Hello, World!".into()))
 }
 
-async fn make_server(port: u16, protos: Protocols, rx: Receiver<()>)
-        -> impl Future<Output = Result<(), hyper::Error>> {
+async fn make_server(
+    port: u16,
+    protos: Protocols,
+    rx: Receiver<()>,
+) -> impl Future<Output = Result<(), hyper::Error>> {
     let addr = SocketAddr::from(([127, 0, 0, 1], port));
 
-    let make_svc = make_service_fn(|_conn| async {
-        Ok::<_, Infallible>(service_fn(handle))
-    });
-    let server = hyper_from_pem_data(CERT, KEY, protos, &addr).unwrap()
-                    .serve(make_svc);
+    let make_svc = make_service_fn(|_conn| async { Ok::<_, Infallible>(service_fn(handle)) });
+    let server = hyper_from_pem_data(CERT, KEY, protos, &addr)
+        .unwrap()
+        .serve(make_svc);
     // for graceful shutting down
     let graceful = server.with_graceful_shutdown(async move { rx.await.unwrap() });
     graceful
@@ -60,18 +62,22 @@ async fn make_server(port: u16, protos: Protocols, rx: Receiver<()>)
 async fn test_http_connect_proto_all() {
     let (tx, rx) = channel();
     let future = make_server(3000, Protocols::ALL, rx).await;
-    
-    tokio::spawn(async move {future.await.unwrap(); });
-    
-    let client = Client::builder().add_root_certificate(
-                    Certificate::from_pem(CERT).unwrap()).build().unwrap();
+
+    tokio::spawn(async move {
+        future.await.unwrap();
+    });
+
+    let client = Client::builder()
+        .add_root_certificate(Certificate::from_pem(CERT).unwrap())
+        .build()
+        .unwrap();
     let resp = client.get("https://localhost:3000/").send().await.unwrap();
     #[cfg(feature = "hyper-h2")]
     assert_eq!(Version::HTTP_2, resp.version());
     #[cfg(not(feature = "hyper-h2"))]
     assert_eq!(Version::HTTP_11, resp.version());
     assert_eq!(StatusCode::OK, resp.status());
-    
+
     tx.send(()).unwrap();
 }
 
@@ -81,15 +87,19 @@ async fn test_http_connect_proto_all() {
 async fn test_http_connect_proto_http2() {
     let (tx, rx) = channel();
     let future = make_server(3001, Protocols::HTTP2, rx).await;
-    
-    tokio::spawn(async move {future.await.unwrap(); });
-    
-    let client = Client::builder().add_root_certificate(
-                    Certificate::from_pem(CERT).unwrap()).build().unwrap();
+
+    tokio::spawn(async move {
+        future.await.unwrap();
+    });
+
+    let client = Client::builder()
+        .add_root_certificate(Certificate::from_pem(CERT).unwrap())
+        .build()
+        .unwrap();
     let resp = client.get("https://localhost:3001/").send().await.unwrap();
     assert_eq!(Version::HTTP_2, resp.version());
     assert_eq!(StatusCode::OK, resp.status());
-    
+
     tx.send(()).unwrap();
 }
 
@@ -99,14 +109,18 @@ async fn test_http_connect_proto_http2() {
 async fn test_http_connect_proto_http1() {
     let (tx, rx) = channel();
     let future = make_server(3002, Protocols::HTTP1, rx).await;
-    
-    tokio::spawn(async move {future.await.unwrap(); });
-    
-    let client = Client::builder().add_root_certificate(
-                    Certificate::from_pem(CERT).unwrap()).build().unwrap();
+
+    tokio::spawn(async move {
+        future.await.unwrap();
+    });
+
+    let client = Client::builder()
+        .add_root_certificate(Certificate::from_pem(CERT).unwrap())
+        .build()
+        .unwrap();
     let resp = client.get("https://localhost:3002/").send().await.unwrap();
     assert_eq!(Version::HTTP_11, resp.version());
     assert_eq!(StatusCode::OK, resp.status());
-    
+
     tx.send(()).unwrap();
 }
