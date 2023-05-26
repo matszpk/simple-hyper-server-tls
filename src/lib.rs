@@ -99,6 +99,7 @@ pub use hyper;
 pub use openssl;
 #[cfg(feature = "tls-rustls")]
 pub use rustls;
+use rustls_pemfile::Item;
 #[cfg(any(feature = "tls-rustls", feature = "tls-openssl"))]
 pub use tls_listener;
 
@@ -130,12 +131,22 @@ fn rustls_server_config_from_readers<R: std::io::Read>(
     // load certificates and keys from Read
     let certs = rustls_pemfile::certs(&mut BufReader::new(cert))
         .map(|mut certs| certs.drain(..).map(Certificate).collect())?;
-    let mut keys: Vec<PrivateKey> = rustls_pemfile::pkcs8_private_keys(&mut BufReader::new(key))
-        .map(|mut keys| keys.drain(..).map(PrivateKey).collect())?;
+    let key_item = rustls_pemfile::read_one(&mut BufReader::new(key))?;
+    let key = if let Some(key_item) = key_item {
+        match key_item {
+            Item::PKCS8Key(bytes) => PrivateKey(bytes),
+            Item::ECKey(bytes) => PrivateKey(bytes),
+            Item::RSAKey(bytes) => PrivateKey(bytes),
+            Item::X509Certificate(_) => return Err(io::Error::new(io::ErrorKind::InvalidData, "cert in private key file!".to_string()).into()),
+            _ => return Err(io::Error::new(io::ErrorKind::InvalidData, "error read private key".to_string()).into()),
+        }
+    } else {
+        return Err(io::Error::new(io::ErrorKind::InvalidData, "error read private key".to_string()).into());
+    };
     let mut config = ServerConfig::builder()
         .with_safe_defaults()
         .with_no_client_auth()
-        .with_single_cert(certs, keys.remove(0))
+        .with_single_cert(certs, key)
         .map_err(|err| io::Error::new(io::ErrorKind::InvalidInput, err))?;
 
     // set up ALPN protocols based on Protocols
@@ -277,13 +288,13 @@ pub fn listener_from_pem_files<P: AsRef<Path>, Q: AsRef<Path>>(
     addr: &SocketAddr,
 ) -> Result<TlsListener, Error> {
     #[cfg(feature = "tls-rustls")]
-    let acceptor = {
+        let acceptor = {
         use std::sync::Arc;
         let config = rustls_server_config_from_pem_files(cert_file, key_file, protocols)?;
         TlsAcceptor::from(Arc::new(config))
     };
     #[cfg(feature = "tls-openssl")]
-    let acceptor = {
+        let acceptor = {
         let builder = ssl_context_builder_from_pem_files(cert_file, key_file, protocols)?;
         builder.build()
     };
@@ -306,13 +317,13 @@ pub fn listener_from_pem_data<'a>(
     addr: &SocketAddr,
 ) -> Result<TlsListener, Error> {
     #[cfg(feature = "tls-rustls")]
-    let acceptor = {
+        let acceptor = {
         use std::sync::Arc;
         let config = rustls_server_config_from_pem_data(cert, key, protocols)?;
         TlsAcceptor::from(Arc::new(config))
     };
     #[cfg(feature = "tls-openssl")]
-    let acceptor = {
+        let acceptor = {
         let builder = ssl_context_builder_from_pem_data(cert, key, protocols)?;
         builder.build()
     };
